@@ -1,0 +1,520 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Cero Merma · Validación en terreno</title>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Una pantalla por paso, pulgar abajo: barra fija de avance al pie */
+:root{
+--bg:#FBFAFD; --surface:#F2EFF9; --card:#FFFFFF; --ink:#1A1038; --muted:#5B5578;
+--accent:#E8491C; --accent2:#6B5BB5; --line:#DCD6EE; --ok:#1C7A4E; --warn:#B45309;
+--display:'Rubik',Arial,sans-serif; --text:'IBM Plex Sans',Verdana,sans-serif;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+--bg:#141021; --surface:#1E1830; --card:#231C38; --ink:#F2EFF9; --muted:#A79FC6;
+--accent:#FF7A52; --accent2:#A596E8; --line:#352C52; --ok:#5DD39E; --warn:#F0B355; color-scheme:dark}}
+:root[data-theme="dark"]{
+--bg:#141021; --surface:#1E1830; --card:#231C38; --ink:#F2EFF9; --muted:#A79FC6;
+--accent:#FF7A52; --accent2:#A596E8; --line:#352C52; --ok:#5DD39E; --warn:#F0B355; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--text);margin:0;font-size:17px;line-height:1.5}
+.wrap{max-width:640px;margin:0 auto;
+padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
+padding-block:22px 150px}
+.prog{height:5px;background:var(--surface);border-radius:999px;overflow:hidden;margin-bottom:10px}
+.progfill{height:100%;background:var(--accent);border-radius:999px;transition:width .25s ease}
+@media(prefers-reduced-motion:reduce){.progfill{transition:none}}
+.progtxt{font-family:var(--display);font-size:12px;font-weight:600;letter-spacing:1.4px;text-transform:uppercase;color:var(--muted);margin:0 0 20px}
+h1{font-family:var(--display);font-size:27px;font-weight:600;margin:0 0 6px;letter-spacing:-.3px;text-wrap:balance}
+h2{font-family:var(--display);font-size:23px;font-weight:600;margin:0 0 6px;letter-spacing:-.2px;text-wrap:balance}
+.hint{color:var(--muted);font-size:15px;margin:0 0 22px}
+.who{display:inline-block;font-family:var(--display);font-size:11px;font-weight:600;letter-spacing:1.2px;text-transform:uppercase;padding:4px 10px;border-radius:999px;margin-bottom:12px}
+.who.eq{background:var(--accent2);color:#fff}
+.who.par{background:var(--accent);color:#fff}
+.f{display:block;margin-bottom:22px}
+.f > span.q{display:block;font-weight:500;margin-bottom:9px;font-size:17px}
+.timerow{display:flex;gap:8px}
+.timerow input{flex:1;min-width:0}
+.timerow select{flex:0 0 118px}
+input[type=text],input[type=number],textarea,select{width:100%;font:inherit;font-size:17px;color:var(--ink);background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px}
+textarea{min-height:92px;resize:vertical}
+input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.scale{display:flex;gap:6px;flex-wrap:wrap}
+.scale input{position:absolute;opacity:0;width:1px;height:1px}
+.scale label{flex:1;min-width:44px;text-align:center;border:1px solid var(--line);border-radius:12px;padding:15px 2px;font-family:var(--display);font-weight:500;cursor:pointer;background:var(--card);font-variant-numeric:tabular-nums}
+.scale input:checked + label{background:var(--accent);border-color:var(--accent);color:#fff}
+.scale input:focus-visible + label{outline:2px solid var(--accent);outline-offset:2px}
+.ends{display:flex;justify-content:space-between;color:var(--muted);font-size:13px;margin:8px 0 24px}
+.item{margin-bottom:6px}
+.item .q{display:block;font-weight:500;font-size:17px;margin-bottom:9px}
+.item .n{font-family:var(--display);font-weight:700;color:var(--accent2);margin-right:7px}
+.pair{display:grid;grid-template-columns:1fr 1fr;gap:0 14px}
+@media(max-width:460px){.pair{grid-template-columns:1fr}}
+.btn{font-family:var(--display);font-size:17px;font-weight:600;border:none;border-radius:13px;padding:16px 22px;cursor:pointer;background:var(--accent);color:#fff}
+.btn:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+.btn.ghost{background:transparent;color:var(--ink);border:1px solid var(--line)}
+.btn.small{padding:10px 15px;font-size:15px}
+.btn.danger{background:transparent;color:var(--accent);border:1px solid var(--accent)}
+.btn[disabled]{opacity:.45;cursor:default}
+.navbar{position:fixed;left:0;right:0;bottom:0;z-index:5;background:var(--card);border-top:1px solid var(--line);
+padding-top:12px;padding-bottom:calc(12px + env(safe-area-inset-bottom,0px));
+padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.navin{max-width:640px;margin:0 auto;display:flex;gap:10px;align-items:center}
+.navin .btn{flex:1}
+.navin .btn.ghost{flex:0 0 auto}
+.note{font-size:15px;color:var(--muted)}
+.note.good{color:var(--ok)}
+.note.bad{color:var(--warn)}
+.adminbox{background:var(--surface);border-radius:14px;padding:16px;margin-top:8px;display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.adminbox .lbl{font-family:var(--display);font-size:12px;font-weight:600;letter-spacing:1.2px;text-transform:uppercase;color:var(--accent2);width:100%}
+details{border-top:1px solid var(--line);padding-top:18px;margin-top:2px}
+summary{cursor:pointer;font-family:var(--display);font-weight:500;font-size:16px;color:var(--accent2);margin-bottom:12px}
+summary:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:4px}
+.done{text-align:center;padding:40px 0}
+.done .tick{font-family:var(--display);font-size:36px;font-weight:700;color:var(--ok);line-height:1.15;text-wrap:balance;margin-bottom:10px}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:12px}
+.stat{background:var(--surface);border-radius:14px;padding:16px}
+.stat .v{font-family:var(--display);font-size:29px;font-weight:700;line-height:1.1;font-variant-numeric:tabular-nums}
+.stat .k{font-size:13px;color:var(--muted);margin-top:4px}
+.stat .meta{font-size:12px;margin-top:6px;font-weight:600}
+.block{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px;margin-bottom:16px}
+.barrow{display:grid;grid-template-columns:120px 1fr 54px;align-items:center;gap:10px;margin-bottom:10px;font-size:14px}
+@media(max-width:460px){.barrow{grid-template-columns:96px 1fr 48px;font-size:13px}}
+.bartrack{background:var(--surface);border-radius:6px;height:16px;overflow:hidden}
+.barfill{height:100%;background:var(--accent2);border-radius:6px}
+.barfill.warn{background:var(--accent)}
+.barval{text-align:right;font-variant-numeric:tabular-nums;font-weight:600}
+.ficha{border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:14px;background:var(--card)}
+.fhead{display:flex;justify-content:space-between;gap:12px;align-items:baseline;flex-wrap:wrap;margin-bottom:6px}
+.fhead h3{font-family:var(--display);font-size:17px;font-weight:600;margin:0}
+.fdate{color:var(--muted);font-size:13px;font-variant-numeric:tabular-nums}
+.drow{display:grid;grid-template-columns:190px 1fr;gap:10px;padding:7px 0;border-top:1px solid var(--line);font-size:14px}
+@media(max-width:460px){.drow{grid-template-columns:1fr;gap:2px}}
+.dk{color:var(--muted)}
+.dv{color:var(--ink)}
+.del{margin-top:14px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.empty{text-align:center;padding:36px 16px;color:var(--muted)}
+.empty strong{display:block;font-family:var(--display);color:var(--ink);font-size:17px;margin-bottom:6px}
+#qrbox{display:flex;justify-content:center;padding:18px;background:#fff;border-radius:14px;margin-top:14px}
+.urlrow{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
+.urlrow input{flex:1;min-width:180px}
+.tophead{margin-bottom:18px}
+</style>
+<style>
+html,body{margin:0;padding:0}
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px)}
+img{max-width:100%}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<div class="wrap">
+<div id="progwrap" hidden>
+<div class="prog"><div class="progfill" id="progfill" style="width:0%"></div></div>
+<p class="progtxt" id="progtxt"></p>
+</div>
+<div id="pantallas"></div>
+<p class="note" id="msg"></p>
+</div>
+
+<div class="navbar" id="navbar" hidden><div class="navin">
+<button type="button" class="btn ghost" id="atras">Atrás</button>
+<button type="button" class="btn" id="siguiente">Siguiente</button>
+</div></div>
+
+<script>
+/* ===================================================================
+   CONFIGURACION
+   Para que las fichas lleguen a una planilla central, pega aqui la
+   direccion del endpoint (ver LEEME.md, seccion "Recoger las fichas").
+   Si queda vacia, la pagina funciona igual pero guarda solo en este
+   telefono.
+   =================================================================== */
+var CONFIG={ endpoint:"" };
+
+var LOCALES=["local-1","local-2","local-3"];
+var SEQ=[["registrar","Registrar un producto"],["alerta","Leer la alerta del día"],["decidir","Elegir el destino"],["confirmar","Confirmar la decisión"]];
+var SUS=["Me gustaría usar esta app con frecuencia en mi local.","Me pareció innecesariamente complicada.","Me pareció fácil de usar.","Necesitaría que alguien me ayudara para poder usarla.","Las funciones estaban bien integradas.","Había demasiada inconsistencia en la app.","La mayoría de la gente aprendería a usarla muy rápido.","Me resultó muy engorrosa de usar.","Me sentí con confianza al usarla.","Tuve que aprender muchas cosas antes de poder usarla."];
+var LIK=[["prefiere","Preferiría usar este aviso antes que revisar las fechas a mano."],["registraria","Registraría cada producto con su fecha al recibir la mercadería, todos los días."]];
+
+function esc(s){return String(s==null?"":s).replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]})}
+function scale(name,n,lo,hi){
+  var h='<div class="scale">';
+  for(var i=1;i<=n;i++)h+='<input type="radio" name="'+name+'" id="'+name+'_'+i+'" value="'+i+'"><label for="'+name+'_'+i+'">'+i+'</label>';
+  return h+'</div><div class="ends"><span>'+lo+'</span><span>'+hi+'</span></div>';
+}
+function campoNum(id,q){return '<label class="f"><span class="q">'+esc(q)+'</span><input type="number" id="'+id+'" min="0" inputmode="numeric"></label>'}
+function campoTiempo(id,q){return '<div class="f"><span class="q">'+esc(q)+'</span><div class="timerow">'+
+'<input type="number" id="'+id+'" min="0" step="any" inputmode="decimal" aria-label="'+esc(q)+'">'+
+'<select id="'+id+'U" aria-label="Unidad de '+esc(q)+'"><option value="seg">segundos</option><option value="min">minutos</option></select>'+
+'</div></div>'}
+var TIEMPOS=["tManual","tApp","tRegistro"];
+function dur(s){if(s==null||s==="")return "";if(s<90)return s+" s";var m=Math.floor(s/60),r=s%60;return m+" min"+(r?" "+r+" s":"")}
+
+var P=[];
+P.push({t:"inicio",html:function(){
+  var o='<option value="">Elige el local</option>';
+  LOCALES.forEach(function(l){o+='<option value="'+l+'">'+l+'</option>'});
+  o+='<option value="otro">Otro (escribir)</option>';
+  return '<div class="tophead"><h1>Cero Merma</h1>'+
+  '<p class="hint">Ficha de la visita. Tómate unos 20 minutos.</p></div>'+
+  '<label class="f"><span class="q">Tu nombre</span><input type="text" id="persona" autocomplete="off"></label>'+
+  '<label class="f"><span class="q">Local</span><select id="local">'+o+'</select></label>'+
+  '<label class="f" id="otrowrap" hidden><span class="q">Nombre del local</span><input type="text" id="localOtro" autocomplete="off"></label>'+
+  '<div class="adminbox" id="adminbox" hidden><span class="lbl">Modo administración</span>'+
+  '<button type="button" class="btn ghost small" id="verRes">Ver resultados</button>'+
+  '<button type="button" class="btn ghost small" id="verFichas">Ver fichas</button></div>';
+}});
+P.push({t:"trabaja",html:function(){
+  return '<span class="who par">Lo responde el dueño</span><h2>Cómo trabaja hoy</h2>'+
+  '<p class="hint">Antes de mostrarle nada de la app.</p>'+
+  '<label class="f"><span class="q">Rol</span><select id="rol"><option value="">Sin responder</option><option>Dueño o dueña</option><option>Encargado o encargada</option><option>Vendedor o vendedora</option><option>Otro</option></select></label>'+
+  '<label class="f"><span class="q">¿Perdió productos por vencimiento en el último mes?</span><select id="perdida"><option value="">Sin responder</option><option value="si">Sí</option><option value="no">No</option><option value="nose">No sabe</option></select></label>'+
+  campoNum("perdidaCant","Si sí, ¿cuántos productos al mes, más o menos?")+
+  '<label class="f"><span class="q">¿Cómo revisa hoy las fechas de vencimiento?</span><textarea id="metodoHoy" placeholder="Anotar con sus palabras"></textarea></label>';
+}});
+P.push({t:"medicion",html:function(){
+  return '<span class="who eq">Lo mide el equipo</span><h2>Antes y después</h2>'+
+  '<p class="hint">La misma búsqueda de las dos maneras: primero a mano en su repisa, después con la app.</p>'+
+  '<div class="pair">'+campoTiempo("tManual","Tiempo a mano")+campoTiempo("tApp","Tiempo con la app")+
+  campoTiempo("tRegistro","Registrar un producto")+campoNum("tareasOk","Tareas sin ayuda (de 4)")+'</div>'+
+  '<details><summary>Contar la repisa (opcional, pero es el dato más fuerte)</summary>'+
+  '<p class="hint">Solo si alcanzaron a revisar la repisa antes de empezar. Si no, déjenlo en blanco.</p>'+
+  '<div class="pair">'+campoNum("totalProd","Productos por vencer que sí existían")+
+  campoNum("detManual","Encontrados a mano")+campoNum("detApp","Encontrados con la app")+'</div></details>';
+}});
+P.push({t:"seq",html:function(){
+  var h='<span class="who par">Lo responde el dueño</span><h2>Facilidad de cada tarea</h2>'+
+  '<p class="hint">«En general, ¿qué tan fácil o difícil fue esta tarea?» Preguntar apenas termina cada una.</p>';
+  SEQ.forEach(function(t){h+='<div class="item"><span class="q">'+esc(t[1])+'</span></div>'+scale("seq_"+t[0],7,"Muy difícil","Muy fácil")});
+  return h;
+}});
+function susPantalla(desde,hasta,titulo,sub){
+  return {t:"sus"+desde,html:function(){
+    var h='<span class="who par">Lo responde el dueño</span><h2>'+titulo+'</h2><p class="hint">'+sub+'</p>';
+    for(var i=desde;i<=hasta;i++)h+='<div class="item"><span class="q"><span class="n">'+(i+1)+'</span>'+esc(SUS[i])+'</span></div>'+scale("sus_"+i,5,"Muy en desacuerdo","Muy de acuerdo");
+    return h;
+  }};
+}
+P.push(susPantalla(0,4,"Usabilidad general","Cinco frases. Ojo: algunas están en negativo a propósito, léanlas completas."));
+P.push(susPantalla(5,9,"Usabilidad general","Las cinco últimas, en la misma escala."));
+P.push({t:"likert",html:function(){
+  var h='<span class="who par">Lo responde el dueño</span><h2>Preferencia y disposición</h2><p class="hint">De 1 «muy en desacuerdo» a 5 «muy de acuerdo».</p>';
+  LIK.forEach(function(t){h+='<div class="item"><span class="q">'+esc(t[1])+'</span></div>'+scale("lik_"+t[0],5,"Muy en desacuerdo","Muy de acuerdo")});
+  return h;
+}});
+P.push({t:"abiertas",html:function(){
+  return '<span class="who par">Lo responde el dueño</span><h2>Para cerrar</h2>'+
+  '<p class="hint">Tres preguntas abiertas. Anotar lo más textual posible.</p>'+
+  '<label class="f"><span class="q">¿Qué hace hoy cuando ve un producto cerca de su fecha?</span><textarea id="a1"></textarea></label>'+
+  '<label class="f"><span class="q">¿Qué le faltó o le sobró a la app?</span><textarea id="a2"></textarea></label>'+
+  '<label class="f"><span class="q">¿En qué momento del día la usaría?</span><textarea id="a3"></textarea></label>';
+}});
+
+var D={},U={},paso=0,vista="encuesta";
+var cont=document.getElementById("pantallas"),msg=document.getElementById("msg");
+var nav=document.getElementById("navbar"),bAtras=document.getElementById("atras"),bSig=document.getElementById("siguiente");
+
+function esAdmin(){return /admin/i.test(D.persona||"")}
+
+function guardarPantalla(){
+  var p=P[paso];if(!p)return;
+  if(p.t==="inicio"){
+    D.persona=(document.getElementById("persona")||{}).value||"";
+    var sel=(document.getElementById("local")||{}).value||"";
+    D.local = sel==="otro" ? ((document.getElementById("localOtro")||{}).value||"") : sel;
+  } else if(p.t==="trabaja"){
+    D.rol=val("rol");D.perdida=val("perdida");D.perdidaCant=numv("perdidaCant");D.metodoHoy=val("metodoHoy");
+  } else if(p.t==="medicion"){
+    TIEMPOS.forEach(function(k){
+      var raw=numv(k),u=val(k+"U")||"seg";U[k]=u;
+      D[k]= raw==null ? null : Math.round(u==="min"?raw*60:raw);
+    });
+    ["tareasOk","totalProd","detManual","detApp"].forEach(function(k){D[k]=numv(k)});
+  } else if(p.t==="seq"){
+    D.seq=D.seq||{};SEQ.forEach(function(t){var v=radio("seq_"+t[0]);if(v!=null)D.seq[t[0]]=v});
+  } else if(p.t.indexOf("sus")===0){
+    D.sus=D.sus||[];for(var i=0;i<10;i++){var v=radio("sus_"+i);if(v!=null)D.sus[i]=v}
+  } else if(p.t==="likert"){
+    LIK.forEach(function(t){var v=radio("lik_"+t[0]);if(v!=null)D[t[0]]=v});
+  } else if(p.t==="abiertas"){
+    D.a1=val("a1");D.a2=val("a2");D.a3=val("a3");
+  }
+}
+function val(id){var e=document.getElementById(id);return e?e.value.trim():""}
+function numv(id){var e=document.getElementById(id);if(!e||e.value==="")return null;var n=Number(e.value);return isFinite(n)?n:null}
+function radio(name){var el=document.querySelector('input[name="'+name+'"]:checked');return el?Number(el.value):null}
+
+function restaurar(){
+  var p=P[paso];if(!p)return;
+  if(p.t==="inicio"){
+    if(D.persona)document.getElementById("persona").value=D.persona;
+    if(D.local){
+      var s=document.getElementById("local");
+      if(LOCALES.indexOf(D.local)>=0){s.value=D.local}
+      else{s.value="otro";document.getElementById("otrowrap").hidden=false;document.getElementById("localOtro").value=D.local}
+    }
+  } else if(p.t==="trabaja"){
+    set("rol",D.rol);set("perdida",D.perdida);set("perdidaCant",D.perdidaCant);set("metodoHoy",D.metodoHoy);
+  } else if(p.t==="medicion"){
+    TIEMPOS.forEach(function(k){
+      var e=document.getElementById(k+"U");if(e)e.value=U[k]||"seg";
+      if(D[k]!=null)set(k, U[k]==="min" ? (D[k]/60) : D[k]);
+    });
+    ["tareasOk","totalProd","detManual","detApp"].forEach(function(k){set(k,D[k])});
+  } else if(p.t==="seq"){
+    if(D.seq)SEQ.forEach(function(t){mark("seq_"+t[0],D.seq[t[0]])});
+  } else if(p.t.indexOf("sus")===0){
+    if(D.sus)for(var i=0;i<10;i++)mark("sus_"+i,D.sus[i]);
+  } else if(p.t==="likert"){
+    LIK.forEach(function(t){mark("lik_"+t[0],D[t[0]])});
+  } else if(p.t==="abiertas"){
+    set("a1",D.a1);set("a2",D.a2);set("a3",D.a3);
+  }
+}
+function set(id,v){var e=document.getElementById(id);if(e&&v!=null&&v!=="")e.value=v}
+function mark(name,v){if(v==null)return;var e=document.getElementById(name+"_"+v);if(e)e.checked=true}
+
+function pintar(){
+  vista="encuesta";
+  cont.innerHTML=P[paso].html();
+  restaurar();
+  document.getElementById("progwrap").hidden=false;
+  document.getElementById("progfill").style.width=Math.round(100*paso/(P.length-1))+"%";
+  document.getElementById("progtxt").textContent = paso===0 ? "Antes de empezar" : "Paso "+paso+" de "+(P.length-1);
+  nav.hidden=false;
+  bAtras.hidden = paso===0;
+  bSig.textContent = paso===P.length-1 ? "Guardar la ficha" : "Siguiente";
+  bSig.disabled=false;
+  msg.textContent="";msg.className="note";
+  if(P[paso].t==="inicio")conectarInicio();
+  window.scrollTo(0,0);
+}
+function conectarInicio(){
+  var nom=document.getElementById("persona"),sel=document.getElementById("local"),box=document.getElementById("adminbox");
+  function chk(){D.persona=nom.value;box.hidden=!esAdmin()}
+  nom.oninput=chk;chk();
+  sel.onchange=function(){document.getElementById("otrowrap").hidden = sel.value!=="otro"};
+  document.getElementById("verRes").onclick=function(){guardarPantalla();verAdmin("resultados")};
+  document.getElementById("verFichas").onclick=function(){guardarPantalla();verAdmin("fichas")};
+}
+bAtras.onclick=function(){guardarPantalla();if(paso>0){paso--;pintar()}};
+bSig.onclick=function(){
+  guardarPantalla();
+  if(paso===0){
+    if(!D.persona){msg.textContent="Falta tu nombre.";msg.className="note bad";return}
+    if(!D.local){msg.textContent="Falta elegir el local.";msg.className="note bad";return}
+  }
+  if(paso<P.length-1){paso++;reenviarPendientes();
+pintar();return}
+  guardar();
+};
+
+var rows=[];
+var LLAVE="atr_fichas";
+function leerFichas(){try{var v=localStorage.getItem(LLAVE);return v?JSON.parse(v):[]}catch(e){return []}}
+function escribirFichas(){try{localStorage.setItem(LLAVE,JSON.stringify(rows))}catch(e){}}
+function ordenar(){rows.sort(function(a,b){return (b.ts||0)-(a.ts||0)})}
+rows=leerFichas();ordenar();
+
+function enviar(rec){
+  if(!CONFIG.endpoint)return Promise.resolve(false);
+  return fetch(CONFIG.endpoint,{
+    method:"POST",
+    headers:{"Content-Type":"text/plain;charset=utf-8"},
+    body:JSON.stringify(rec)
+  }).then(function(r){return r.ok}).catch(function(){return false});
+}
+function reenviarPendientes(){
+  if(!CONFIG.endpoint)return Promise.resolve(0);
+  var pend=rows.filter(function(r){return !r.enviado});
+  if(!pend.length)return Promise.resolve(0);
+  return Promise.all(pend.map(function(r){
+    return enviar(r).then(function(ok){if(ok)r.enviado=true;return ok})
+  })).then(function(res){
+    escribirFichas();
+    return res.filter(Boolean).length;
+  });
+}
+
+function guardar(){
+  var rec=Object.assign({},D);
+  rec.ts=Date.now();
+  rec.id=String(rec.ts)+"-"+Math.random().toString(36).slice(2,7);
+  rec.enviado=false;
+  bSig.disabled=true;msg.textContent="Guardando\u2026";msg.className="note";
+  rows.unshift(rec);escribirFichas();
+  enviar(rec).then(function(ok){
+    if(ok){rec.enviado=true;escribirFichas()}
+    listo(ok);
+  });
+}
+function listo(ok){
+  vista="listo";
+  var admin=esAdmin(),nombre=D.persona,local=D.local;
+  var est = !CONFIG.endpoint ? "Guardada en este tel\u00e9fono."
+          : (ok ? "Guardada y enviada a la planilla." : "Guardada en este tel\u00e9fono. No se pudo enviar todav\u00eda; se reintenta sola.");
+  cont.innerHTML='<div class="done"><div class="tick">¡Muchas gracias!</div><h2>Ficha guardada</h2>'+
+    '<p class="hint">'+esc(local)+' · '+esc(nombre)+'</p><p class="note">'+esc(est)+'</p></div>';
+  document.getElementById("progwrap").hidden=true;
+  document.getElementById("progfill").style.width="100%";
+  nav.hidden=true;msg.textContent="";
+  var h='<button type="button" class="btn" id="otra">Hacer otra encuesta</button>'+
+    ' <button type="button" class="btn ghost" id="inicio2">Volver al comienzo</button>';
+  if(admin)h+=' <button type="button" class="btn ghost" id="res2">Ver resultados</button>';
+  cont.insertAdjacentHTML("beforeend",'<div class="adminbox">'+h+'</div>');
+  document.getElementById("otra").onclick=function(){D={persona:nombre,local:local};U={};paso=0;pintar()};
+  document.getElementById("inicio2").onclick=function(){D={};U={};paso=0;pintar()};
+  var r=document.getElementById("res2");if(r)r.onclick=function(){verAdmin("resultados")};
+}
+
+function volverBtn(){
+  return '<div class="adminbox"><button type="button" class="btn ghost" id="volver">Volver al inicio</button>'+
+  '<button type="button" class="btn ghost small" id="cambiar">Cambiar de vista</button></div>';
+}
+function verAdmin(cual){
+  vista=cual;
+  nav.hidden=true;document.getElementById("progwrap").hidden=true;msg.textContent="";
+  cont.innerHTML = (cual==="resultados"?htmlResultados():htmlFichas()) + volverBtn();
+  document.getElementById("volver").onclick=function(){paso=0;pintar()};
+  document.getElementById("cambiar").onclick=function(){verAdmin(cual==="resultados"?"fichas":"resultados")};
+  if(cual==="resultados"){var g=document.getElementById("qrgo");if(g)g.onclick=makeQr}
+  if(cual==="fichas"){
+    var c=document.getElementById("csv");if(c)c.onclick=downloadCsv;
+    var rv=document.getElementById("reenviar");
+    if(rv)rv.onclick=function(){
+      var m=document.getElementById("reenvmsg");m.textContent="Enviando\u2026";
+      reenviarPendientes().then(function(n){m.textContent=n+" ficha"+(n===1?"":"s")+" enviada"+(n===1?"":"s")+".";verAdmin("fichas")});
+    };
+    Array.prototype.forEach.call(cont.querySelectorAll(".borrar"),function(b){b.onclick=askDelete});
+  }
+  window.scrollTo(0,0);
+}
+
+function avg(a){var v=a.filter(function(x){return typeof x==="number"&&isFinite(x)});return v.length?v.reduce(function(s,x){return s+x},0)/v.length:null}
+function susScore(arr){
+  if(!arr||arr.length!==10)return null;
+  var sum=0;for(var i=0;i<10;i++){var r=arr[i];if(typeof r!=="number")return null;sum+=(i%2===0)?(r-1):(5-r)}
+  return sum*2.5;
+}
+function pct(a,lo){var v=a.filter(function(x){return typeof x==="number"});if(!v.length)return null;return Math.round(100*v.filter(function(x){return x>=lo}).length/v.length)}
+function fmt(n,d){return n==null?"—":n.toFixed(d==null?1:d)}
+function col(ok){return ok?"var(--ok)":"var(--warn)"}
+
+function htmlResultados(){
+  if(!rows.length)return '<h2>Resultados</h2><div class="empty"><strong>Todavía no hay fichas</strong>Cuando alguien complete una encuesta, los promedios aparecen acá.</div>';
+  var n=rows.length;
+  var tm=avg(rows.map(function(r){return r.tManual})),ta=avg(rows.map(function(r){return r.tApp}));
+  var red=(tm&&ta!=null&&tm>0)?Math.round(100*(tm-ta)/tm):null;
+  var treg=avg(rows.map(function(r){return r.tRegistro}));
+  var susAvg=avg(rows.map(function(r){return susScore(r.sus)}));
+  var pref=pct(rows.map(function(r){return r.prefiere}),4),reg=pct(rows.map(function(r){return r.registraria}),4);
+  var perd=rows.filter(function(r){return r.perdida==="si"}).length;
+  var h='<h2>Resultados</h2><p class="hint">'+n+' ficha'+(n===1?"":"s")+'. Las metas vienen del plan de validación.</p><div class="stats">';
+  h+='<div class="stat"><div class="v">'+(red==null?"—":red+" %")+'</div><div class="k">menos tiempo con la app</div><div class="meta" style="color:'+col(red!=null&&red>=50)+'">Meta: 50 % o más</div></div>';
+  h+='<div class="stat"><div class="v">'+fmt(susAvg,0)+'</div><div class="k">SUS promedio, de 0 a 100</div><div class="meta" style="color:'+col(susAvg!=null&&susAvg>=68)+'">Meta: 68 o más</div></div>';
+  h+='<div class="stat"><div class="v">'+fmt(treg,0)+(treg==null?"":" s")+'</div><div class="k">en registrar un producto</div><div class="meta" style="color:'+col(treg!=null&&treg<15)+'">Meta: menos de 15 s</div></div>';
+  h+='<div class="stat"><div class="v">'+(pref==null?"—":pref+" %")+'</div><div class="k">prefiere el aviso</div><div class="meta" style="color:'+col(pref!=null&&pref>=70)+'">Meta: 70 % o más</div></div>';
+  h+='<div class="stat"><div class="v">'+(reg==null?"—":reg+" %")+'</div><div class="k">registraría a diario</div><div class="meta" style="color:'+col(reg!=null&&reg>=70)+'">Meta: 70 % o más</div></div>';
+  h+='<div class="stat"><div class="v">'+perd+' de '+n+'</div><div class="k">perdió productos el último mes</div><div class="meta" style="color:var(--muted)">Cifra del problema</div></div>';
+  h+='</div>';
+  var mx=Math.max(tm||0,ta||0,1);
+  h+='<div class="block" style="margin-top:18px"><h2>Tiempo de detección</h2><p class="hint">Promedio en segundos.</p>'+
+   '<div class="barrow"><span>A mano</span><div class="bartrack"><div class="barfill warn" style="width:'+Math.round(100*(tm||0)/mx)+'%"></div></div><span class="barval">'+fmt(tm,0)+'</span></div>'+
+   '<div class="barrow"><span>Con la app</span><div class="bartrack"><div class="barfill" style="width:'+Math.round(100*(ta||0)/mx)+'%"></div></div><span class="barval">'+fmt(ta,0)+'</span></div></div>';
+  h+='<div class="block"><h2>Facilidad por tarea</h2><p class="hint">Promedio de 1 a 7. Bajo 5,5 esa tarea se rediseña.</p>';
+  SEQ.forEach(function(t){
+    var v=avg(rows.map(function(r){return r.seq&&r.seq[t[0]]}));
+    h+='<div class="barrow"><span>'+esc(t[1])+'</span><div class="bartrack"><div class="barfill'+(v!=null&&v<5.5?" warn":"")+'" style="width:'+Math.round(100*(v||0)/7)+'%"></div></div><span class="barval">'+fmt(v)+'</span></div>';
+  });
+  h+='</div>';
+  h+='<div class="block"><h2>Código QR</h2><p class="hint">Pega el enlace que quieras repartir.</p>'+
+   '<div class="urlrow"><input type="text" id="qrurl" placeholder="https://…"><button type="button" class="btn small" id="qrgo">Generar</button></div><div id="qrbox"></div></div>';
+  return h;
+}
+
+var PERD={si:"Sí",no:"No",nose:"No sabe"};
+function fdate(ts){if(!ts)return "";try{return new Date(ts).toLocaleString("es-CL",{day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit"})}catch(e){return ""}}
+function drow(k,v){if(v===null||v===undefined||v==="")return "";return '<div class="drow"><span class="dk">'+esc(k)+'</span><span class="dv">'+esc(v)+'</span></div>'}
+function htmlFichas(){
+  if(!rows.length)return '<h2>Fichas</h2><div class="empty"><strong>Todavía no hay fichas</strong>Cuando alguien complete una encuesta aparece acá, y desde acá puedes borrarla.</div>';
+  var h='<h2>'+rows.length+' ficha'+(rows.length===1?"":"s")+'</h2><p class="hint">De la más reciente a la más antigua. Borrar una no se puede deshacer.</p>'+
+   '<div class="adminbox" style="margin-bottom:16px"><button type="button" class="btn ghost small" id="csv">Descargar CSV</button>'+
+   (CONFIG.endpoint?'<button type="button" class="btn ghost small" id="reenviar">Reintentar env\u00edo</button><span class="note" id="reenvmsg"></span>':'')+'</div>';
+  rows.forEach(function(r){
+    var sus=susScore(r.sus);
+    h+='<article class="ficha"><div class="fhead"><h3>'+esc(r.local||"Sin local")+'</h3><span class="fdate">'+esc(fdate(r.ts))+'</span></div>';
+    h+=drow("Respondió",r.persona);
+    h+=drow("Rol",r.rol);
+    h+=drow("Perdió productos el último mes",PERD[r.perdida]);
+    h+=drow("Cuántos al mes",r.perdidaCant);
+    h+=drow("Cómo revisa hoy",r.metodoHoy);
+    h+=drow("Tiempo a mano",dur(r.tManual));
+    h+=drow("Tiempo con la app",dur(r.tApp));
+    h+=drow("Registrar un producto",dur(r.tRegistro));
+    h+=drow("Tareas sin ayuda",r.tareasOk==null?"":r.tareasOk+" de 4");
+    h+=drow("Productos que existían",r.totalProd);
+    h+=drow("Encontrados a mano",r.detManual);
+    h+=drow("Encontrados con la app",r.detApp);
+    SEQ.forEach(function(t){h+=drow("SEQ · "+t[1],r.seq&&r.seq[t[0]]!=null?r.seq[t[0]]+" de 7":"")});
+    h+=drow("SUS",sus==null?"":sus.toFixed(0)+" de 100");
+    h+=drow("Prefiere el aviso",r.prefiere==null?"":r.prefiere+" de 5");
+    h+=drow("Registraría a diario",r.registraria==null?"":r.registraria+" de 5");
+    h+=drow("Qué hace hoy",r.a1);
+    h+=drow("Qué faltó o sobró",r.a2);
+    h+=drow("Cuándo la usaría",r.a3);
+    h+='<div class="del" data-id="'+esc(r.id)+'"><button type="button" class="btn ghost small borrar">Borrar esta ficha</button></div></article>';
+  });
+  return h;
+}
+function askDelete(e){
+  var wrap=e.target.parentNode;
+  wrap.innerHTML='<span class="note">¿Borrarla definitivamente?</span>'+
+    '<button type="button" class="btn danger small si">Sí, borrar</button>'+
+    '<button type="button" class="btn ghost small no">Cancelar</button>';
+  wrap.querySelector(".no").onclick=function(){verAdmin("fichas")};
+  wrap.querySelector(".si").onclick=function(){doDelete(wrap)};
+}
+function doDelete(wrap){
+  var id=wrap.getAttribute("data-id");
+  if(!id){wrap.innerHTML='<span class="note bad">Esta ficha no trae identificador.</span>';return}
+  rows=rows.filter(function(r){return r.id!==id});
+  escribirFichas();
+  verAdmin("fichas");
+}
+function csvTexto(){
+  var cols=["ts","id","enviado","persona","local","rol","perdida","perdidaCant","metodoHoy","tManual","tApp","tRegistro","tareasOk","totalProd","detManual","detApp","prefiere","registraria","a1","a2","a3"];
+  var head=cols.concat(SEQ.map(function(t){return "seq_"+t[0]})).concat(SUS.map(function(_,i){return "sus_"+(i+1)})).concat(["sus_score"]);
+  var lines=[head.join(",")];
+  rows.forEach(function(r){
+    var v=cols.map(function(k){return r[k]});
+    SEQ.forEach(function(t){v.push(r.seq?r.seq[t[0]]:"")});
+    for(var i=0;i<10;i++)v.push(r.sus?r.sus[i]:"");
+    v.push(susScore(r.sus));
+    lines.push(v.map(function(x){return '"'+String(x==null?"":x).replace(/"/g,'""')+'"'}).join(","));
+  });
+  return lines.join("\n");
+}
+function downloadCsv(){
+  var blob=new Blob(["\ufeff"+csvTexto()],{type:"text/csv;charset=utf-8"});
+  var a=document.createElement("a");
+  a.href=URL.createObjectURL(blob);
+  a.download="cero-merma-validacion.csv";
+  document.body.appendChild(a);a.click();
+  setTimeout(function(){URL.revokeObjectURL(a.href);a.remove()},1000);
+}
+function makeQr(){
+  var u=document.getElementById("qrurl").value.trim(),box=document.getElementById("qrbox");
+  box.innerHTML="";
+  if(!u){box.innerHTML='<span class="note">Falta el enlace.</span>';return}
+  if(typeof QRCode==="undefined"){box.innerHTML='<span class="note">No se pudo cargar el generador.</span>';return}
+  new QRCode(box,{text:u,width:220,height:220,correctLevel:QRCode.CorrectLevel.M});
+}
+
+pintar();
+</script>
+<script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+</body>
+</html>
