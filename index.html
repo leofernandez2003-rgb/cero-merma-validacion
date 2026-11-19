@@ -364,7 +364,9 @@ function listo(ok){
   var h='<button type="button" class="btn" id="otra">Hacer otra encuesta</button>'+
     ' <button type="button" class="btn ghost" id="inicio2">Volver al comienzo</button>';
   if(admin)h+=' <button type="button" class="btn ghost" id="res2">Ver resultados</button>';
+  h+=' <button type="button" class="btn ghost" id="comp2">Compartir respaldo por WhatsApp</button><span class="note" id="comp2msg"></span>';
   cont.insertAdjacentHTML("beforeend",'<div class="adminbox">'+h+'</div>');
+  document.getElementById("comp2").onclick=function(){compartirCsv("comp2msg")};
   document.getElementById("otra").onclick=function(){D={persona:nombre,local:local};U={};paso=0;pintar()};
   document.getElementById("inicio2").onclick=function(){D={};U={};paso=0;pintar()};
   var r=document.getElementById("res2");if(r)r.onclick=function(){verAdmin("resultados")};
@@ -383,6 +385,7 @@ function verAdmin(cual){
   if(cual==="resultados"){var g=document.getElementById("qrgo");if(g)g.onclick=makeQr}
   if(cual==="fichas"){
     var c=document.getElementById("csv");if(c)c.onclick=downloadCsv;
+    var cp=document.getElementById("compartir");if(cp)cp.onclick=function(){compartirCsv("compmsg")};
     var rv=document.getElementById("reenviar");
     if(rv)rv.onclick=function(){
       var m=document.getElementById("reenvmsg");m.textContent="Enviando\u2026";
@@ -441,7 +444,8 @@ function drow(k,v){if(v===null||v===undefined||v==="")return "";return '<div cla
 function htmlFichas(){
   if(!rows.length)return '<h2>Fichas</h2><div class="empty"><strong>Todavía no hay fichas</strong>Cuando alguien complete una encuesta aparece acá, y desde acá puedes borrarla.</div>';
   var h='<h2>'+rows.length+' ficha'+(rows.length===1?"":"s")+'</h2><p class="hint">De la más reciente a la más antigua. Borrar una no se puede deshacer.</p>'+
-   '<div class="adminbox" style="margin-bottom:16px"><button type="button" class="btn ghost small" id="csv">Descargar CSV</button>'+
+   '<div class="adminbox" style="margin-bottom:16px"><button type="button" class="btn small" id="compartir">Compartir por WhatsApp</button>'+
+   '<button type="button" class="btn ghost small" id="csv">Descargar CSV</button><span class="note" id="compmsg"></span>'+
    (CONFIG.endpoint?'<button type="button" class="btn ghost small" id="reenviar">Reintentar env\u00edo</button><span class="note" id="reenvmsg"></span>':'')+'</div>';
   rows.forEach(function(r){
     var sus=susScore(r.sus);
@@ -504,6 +508,24 @@ function downloadCsv(){
   a.download="cero-merma-validacion.csv";
   document.body.appendChild(a);a.click();
   setTimeout(function(){URL.revokeObjectURL(a.href);a.remove()},1000);
+}
+/* Respaldo: abre el menu de compartir del telefono con el CSV de las
+   fichas guardadas en ESTE telefono (WhatsApp, Drive, correo...).
+   Si el navegador no puede compartir archivos, lo descarga. */
+function compartirCsv(msgId){
+  var m=document.getElementById(msgId);
+  if(!rows.length){if(m)m.textContent="No hay fichas en este teléfono.";return}
+  var d=new Date(),nombre="cero-merma-fichas-"+d.getFullYear()+"-"+("0"+(d.getMonth()+1)).slice(-2)+"-"+("0"+d.getDate()).slice(-2)+".csv";
+  var file=null;
+  try{file=new File(["﻿"+csvTexto()],nombre,{type:"text/csv"})}catch(e){}
+  if(file&&navigator.canShare&&navigator.canShare({files:[file]})){
+    navigator.share({files:[file],title:"Fichas Cero Merma",text:rows.length+" ficha"+(rows.length===1?"":"s")+" de validación Cero Merma"})
+      .then(function(){if(m)m.textContent="Compartido."})
+      .catch(function(e){if(m&&(!e||e.name!=="AbortError"))m.textContent="No se pudo compartir. Usa Descargar CSV."});
+  }else{
+    downloadCsv();
+    if(m)m.textContent="Este navegador no comparte archivos: se descargó el CSV. Adjúntalo en WhatsApp.";
+  }
 }
 function makeQr(){
   var u=document.getElementById("qrurl").value.trim(),box=document.getElementById("qrbox");
